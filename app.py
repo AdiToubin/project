@@ -3,6 +3,7 @@ Flask Application Server
 """
 from flask import Flask, render_template, request, jsonify
 from model.logic import BusinessLogic
+from services.news_fetcher import NewsFetcher
 import os
 
 app = Flask(__name__)
@@ -13,12 +14,13 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-i
 # Initialize business logic
 logic = BusinessLogic()
 
+# Initialize news fetcher service
+news_fetcher = NewsFetcher()
 
 @app.route('/')
 def index():
     """Main page"""
     return render_template('index.html')
-
 
 @app.route('/api/process', methods=['POST'])
 def process():
@@ -29,7 +31,6 @@ def process():
         return jsonify(result), 200
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
-
 
 @app.route('/api/calculate', methods=['POST'])
 def calculate():
@@ -45,12 +46,20 @@ def calculate():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
-
 @app.route('/health')
 def health():
     """Health check endpoint"""
     return jsonify({'status': 'healthy'}), 200
 
+@app.route('/fetch-news')
+def fetch_news():
+    """Fetch news from NewsAPI and return JSON"""
+    try:
+        articles = news_fetcher.fetch_top_headlines()
+        print(f"Fetched {len(articles)} articles.")
+        return jsonify(articles), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
