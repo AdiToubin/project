@@ -1,17 +1,26 @@
-import os
-import uuid
+import os, uuid, requests
 from typing import Any, Dict, List
-
-from supabase import create_client
 from dotenv import load_dotenv
 
 # ---- ENV ----
 load_dotenv()
-SUPABASE_URL = "https://xgkntcsnnuhdepgnjzio.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhna250Y3NubnVoZGVwZ25qemlvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTU1OTUwNSwiZXhwIjoyMDc1MTM1NTA1fQ.0vcBOnz3MJBv_ZPnkCt9gQH-K5iPPtFiLg-pO98OVq0"
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or ""
 
-# ---- קביעת נושא לפי כותרת או מקור ----
+# ---- REST config (עוקף ספריית supabase וה-SSL שלה) ----
+REST_URL = f"{SUPABASE_URL}/rest/v1"
+HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=minimal"
+}
+
+# אם את לא רוצה לראות אזהרות על verify=False:
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# ---- קביעת נושא לפי כותרת/מקור ----
 def guess_topic(title: str | None, source: str | None) -> str:
     if not title:
         title = ""
@@ -30,19 +39,32 @@ def guess_topic(title: str | None, source: str | None) -> str:
         return "Technology"
     if any(w in title for w in ["politic", "president", "minister", "election", "law", "government"]):
         return "Politics"
-
-    # fallback לפי מקור
     if "cnn" in source or "bbc" in source:
         return "World"
     return "General"
 
 # נשלח לטבלה רק את העמודות שקיימות אצלך
+# אם אין לך עמודה topic בטבלה, או תוסיפי אותה ב-SQL, או הסירי אותה מהסט הזה
 ALLOWED_COLS = {"guid", "subject", "content", "notes", "topic"}
+
+def _make_guid(a: Dict[str, Any]) -> str:
+    """
+    GUID דטרמיניסטי: עדיפות ל-URL; אם אין—כותרת; אחרת uuid4.
+    """
+    url = a.get("url")
+    title = (a.get("title") or "").strip()
+    try:
+        if url:
+            return str(uuid.uuid5(uuid.NAMESPACE_URL, url))
+        if title:
+            return str(uuid.uuid5(uuid.NAMESPACE_DNS, f"subject:{title}"))
+    except Exception:
+        pass
+    return str(uuid.uuid4())
 
 def transform_article(a: Dict[str, Any]) -> Dict[str, Any]:
     """
-    ממפה רשומת article מה-JSON לעמודות הטבלה:
-    guid (uuid חדש), subject (title), content, notes (source/url/description)
+    article -> guid, subject, content, notes, topic
     """
     src = a.get("source") or {}
     title = (a.get("title") or "").strip() or None
@@ -50,8 +72,7 @@ def transform_article(a: Dict[str, Any]) -> Dict[str, Any]:
     url = a.get("url")
     source_name = src.get("name")
 
-    # notes: עדיפות לקישור + מקור; אחרת תיאור אם יש
-    notes = None
+    # notes: עדיפות לקישור + מקור; אחרת תיאור
     if url and source_name:
         notes = f"{source_name} | {url}"
     elif url:
@@ -64,50 +85,53 @@ def transform_article(a: Dict[str, Any]) -> Dict[str, Any]:
     topic = guess_topic(title, source_name)
 
     row = {
-        "guid": str(uuid.uuid4()),
+        "guid": _make_guid(a),
         "subject": title,
         "content": content,
         "notes": notes,
+        "topic": topic,
     }
-
-    # מחזירים רק עמודות שקיימות בטבלה ושאינן None
+    # מחזירים רק עמודות שקיימות ושאינן None
     return {k: v for k, v in row.items() if k in ALLOWED_COLS and v is not None}
 
-def take_from_payload(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+def take_from_payload(payload: Dict[str, Any] | List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    מצפה למבנה: { data: { articles: [...] } } בדיוק כמו ששלחת.
-    מסנן החוצה רשומות בלי title (כלומר בלי subject).
+    תומך בפורמטים:
+    - list ישיר
+    - {"articles": [...]}
+    - {"data": {"articles": [...]}}
     """
     if isinstance(payload, list):
         articles = payload
+    elif isinstance(payload, dict) and "articles" in payload:
+        articles = payload.get("articles") or []
     else:
         articles = ((payload or {}).get("data") or {}).get("articles") or []
 
     rows = []
     for a in articles:
         row = transform_article(a)
-        # דלג אם אין subject (title)
         if not row.get("subject"):
             continue
         rows.append(row)
     return rows
 
-def batch_insert(
-    rows: List[Dict[str, Any]],
-    table_name: str = "articles",
-    chunk_size: int = 500,
-    upsert_on: str | None = None  # אין אצלך אינדקס ייחודי, אז ברירת מחדל insert רגיל
-):
+def batch_insert(rows: List[Dict[str, Any]], table_name: str = "articles", chunk_size: int = 500):
+    """
+    הכנסה דרך REST (verify=False לעקיפת SSL מקומי).
+    אם תרצי upsert על guid: צרי unique index ואז נעבור ל-on_conflict.
+    """
+    if not rows:
+        return
+    url = f"{REST_URL}/{table_name}"
     for i in range(0, len(rows), chunk_size):
         chunk = rows[i:i+chunk_size]
-        if upsert_on:
-            supabase.table(table_name).upsert(chunk, on_conflict=upsert_on).execute()
-        else:
-            supabase.table(table_name).insert(chunk).execute()
+        r = requests.post(url, headers=HEADERS, json=chunk, timeout=30, verify=False)
+        r.raise_for_status()
 
-def ingest_payload(payload: Dict[str, Any], table_name: str = "articles"):
+def ingest_payload(payload: Dict[str, Any] | List[Dict[str, Any]], table_name: str = "articles"):
     rows = take_from_payload(payload)
     if not rows:
         return {"inserted": 0, "note": "no valid rows after filtering (missing title/subject)"}
-    batch_insert(rows, table_name=table_name, upsert_on=None)  # insert רגיל
+    batch_insert(rows, table_name=table_name)
     return {"inserted": len(rows)}
