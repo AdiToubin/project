@@ -7,12 +7,37 @@ from dotenv import load_dotenv
 
 # ---- ENV ----
 load_dotenv()
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_URL = "https://xgkntcsnnuhdepgnjzio.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhna250Y3NubnVoZGVwZ25qemlvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTU1OTUwNSwiZXhwIjoyMDc1MTM1NTA1fQ.0vcBOnz3MJBv_ZPnkCt9gQH-K5iPPtFiLg-pO98OVq0"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# ---- קביעת נושא לפי כותרת או מקור ----
+def guess_topic(title: str | None, source: str | None) -> str:
+    if not title:
+        title = ""
+    title = title.lower()
+    source = (source or "").lower()
+
+    if any(w in title for w in ["football", "nba", "sport", "soccer", "game"]):
+        return "Sports"
+    if any(w in title for w in ["stock", "market", "economy", "finance", "dollar", "business"]):
+        return "Economy"
+    if any(w in title for w in ["gaza", "idf", "war", "attack", "israel", "security", "russia", "ukraine"]):
+        return "Defense"
+    if any(w in title for w in ["weather", "forecast", "temperature", "storm", "rain"]):
+        return "Weather"
+    if any(w in title for w in ["tech", "ai", "app", "software", "google", "apple"]):
+        return "Technology"
+    if any(w in title for w in ["politic", "president", "minister", "election", "law", "government"]):
+        return "Politics"
+
+    # fallback לפי מקור
+    if "cnn" in source or "bbc" in source:
+        return "World"
+    return "General"
+
 # נשלח לטבלה רק את העמודות שקיימות אצלך
-ALLOWED_COLS = {"guid", "subject", "content", "notes"}
+ALLOWED_COLS = {"guid", "subject", "content", "notes", "topic"}
 
 def transform_article(a: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -35,6 +60,8 @@ def transform_article(a: Dict[str, Any]) -> Dict[str, Any]:
         notes = source_name
     else:
         notes = a.get("description")
+
+    topic = guess_topic(title, source_name)
 
     row = {
         "guid": str(uuid.uuid4()),
