@@ -2,7 +2,7 @@
 API Controller - Handles general API endpoints
 """
 from flask import jsonify
-from models.business_logic import BusinessLogic
+from app_mvc.models.business_logic import BusinessLogic
 
 class ApiController:
     """Controller for general API endpoints"""

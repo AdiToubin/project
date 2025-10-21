@@ -6,8 +6,8 @@ import json
 import requests
 from pathlib import Path
 from flask import jsonify
-from models.article_model import ArticleModel
-from models.news_service import NewsFetcher
+from app_mvc.models.article_model import ArticleModel
+from app_mvc.models.news_service import NewsFetcher
 
 # Disable SSL warnings for local development
 import urllib3

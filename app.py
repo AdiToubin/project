@@ -4,8 +4,8 @@ Flask Application Server - MVC Architecture
 import os
 from dotenv import load_dotenv
 from flask import Flask, render_template, request
-from controllers.news_controller import NewsController
-from controllers.api_controller import ApiController
+from app_mvc.controllers.news_controller import NewsController
+from app_mvc.controllers.api_controller import ApiController
 
 # Load environment variables
 load_dotenv()
