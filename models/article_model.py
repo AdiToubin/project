@@ -7,6 +7,14 @@ import requests
 from typing import Any, Dict, List
 from dotenv import load_dotenv
 
+# ---- Zero-Shot (HF API) ----
+HF_TOKEN = os.getenv("HF_TOKEN") or ""  # שימי טוקן בסביבה
+HF_MODEL = "joeddav/xlm-roberta-large-xnli"
+HF_API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
+HF_HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"} if HF_TOKEN else {}
+
+CANDIDATE_LABELS = ["Sports", "Economy", "Defense", "Weather", "Technology", "Politics", "World", "General"]
+
 load_dotenv()
 
 class ArticleModel:
@@ -26,28 +34,24 @@ class ArticleModel:
 
     @staticmethod
     def guess_topic(title: str | None, source: str | None) -> str:
-        """Determine article topic based on title and source"""
-        if not title:
-            title = ""
-        title = title.lower()
-        source = (source or "").lower()
+        text = (title or "").strip()
+        if not text:
+            return "General"
 
-        if any(w in title for w in ["football", "nba", "sport", "soccer", "game"]):
-            return "Sports"
-        if any(w in title for w in ["stock", "market", "economy", "finance", "dollar", "business"]):
-            return "Economy"
-        if any(w in title for w in ["gaza", "idf", "war", "attack", "israel", "security", "russia", "ukraine"]):
-            return "Defense"
-        if any(w in title for w in ["weather", "forecast", "temperature", "storm", "rain"]):
-            return "Weather"
-        if any(w in title for w in ["tech", "ai", "app", "software", "google", "apple"]):
-            return "Technology"
-        if any(w in title for w in ["politic", "president", "minister", "election", "law", "government"]):
-            return "Politics"
-        if "cnn" in source or "bbc" in source:
-            return "World"
-        return "General"
-
+        try:
+            payload = {
+                "inputs": text,
+                "parameters": {"candidate_labels": CANDIDATE_LABELS, "multi_label": False}
+            }
+            r = requests.post(HF_API_URL, headers=HF_HEADERS, json=payload, timeout=60)
+            r.raise_for_status()
+            data = r.json()
+            top_label = data["labels"][0]
+            top_score = float(data["scores"][0])
+            return top_label if top_score >= 0.45 else "General"
+        except Exception:
+            return "General"
+        
     @staticmethod
     def _make_guid(article: Dict[str, Any]) -> str:
         """Generate deterministic GUID for article"""
