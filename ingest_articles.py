@@ -1,6 +1,9 @@
-import os, uuid, requests
+import os, uuid, requests,json
 from typing import Any, Dict, List
 from dotenv import load_dotenv
+from kafka import KafkaProducer
+from supabase import create_client
+
 
 # ---- ENV ----
 load_dotenv()
@@ -128,7 +131,7 @@ def batch_insert(rows: List[Dict[str, Any]], table_name: str = "articles", chunk
         chunk = rows[i:i+chunk_size]
         r = requests.post(url, headers=HEADERS, json=chunk, timeout=30, verify=False)
         r.raise_for_status()
-
+## שליחת הנתונים לטבלה וקפקא
 def ingest_payload(payload: Dict[str, Any] | List[Dict[str, Any]], table_name: str = "articles"):
     rows = take_from_payload(payload)
     if not rows:
