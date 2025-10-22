@@ -27,7 +27,8 @@ from cloudinary import Search
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+
 SITE_API_URL = os.getenv("SITE_API_URL", "http://127.0.0.1:5000/new_article")
 
 # הגדרות Cloudinary
@@ -38,7 +39,8 @@ cloudinary.config(
 )
 
 KAFKA_TOPIC = "news-articles"
-ALLOWED_TOPICS = ["Sports", "Politics", "Fashion"]
+ALLOWED_TOPICS = ["Technology", "Defense", "Sports","General","Politics","Business","Entertainment","Health","Science","Fashion"]
+
 
 # ------------------------------------------------------------
 # 🔹 שלב 2 – טעינת מודל Hugging Face NER
@@ -70,9 +72,10 @@ print(f"📡 מאזין ל-Kafka Topic: {KAFKA_TOPIC}")
 def fetch_article(article_id: str):
     url = f"{SUPABASE_URL}/rest/v1/articles"
     params = {
-        "id": f"eq.{article_id}",
-        "select": "id,topic,subject,content,created_at"
-    }
+    "guid": f"eq.{article_id}",
+    "select": "guid,topic,subject,content,created_at"
+      }
+
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}"
@@ -100,9 +103,14 @@ for msg in consumer:
     topic = payload.get("topic")
 
     # 🧠 שלב 1: סינון לפי נושא
-    if topic not in ALLOWED_TOPICS:
-        print(f"⏩ מדלג על נושא לא רלוונטי: {topic}")
-        continue
+    # 🧠 שלב 1: ניקוי ותקנון שם הנושא
+    topic_clean = topic.strip().capitalize() if topic else ""
+
+    # 🧩 שלב 2: בדיקה מול רשימת הנושאים המותרים
+    if topic_clean not in ALLOWED_TOPICS:
+       print("🧾 נושא שהגיע:", topic)
+       print(f"⏩ מדלג על נושא לא רלוונטי: {topic_clean}")
+       continue
 
     print(f"\n🆕 כתבה רלוונטית בנושא '{topic}' (id={article_id})")
 

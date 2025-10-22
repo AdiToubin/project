@@ -34,10 +34,11 @@ class ArticleModel:
 
     @staticmethod
     def guess_topic(title: str | None, source: str | None) -> str:
-        text = (title or "").strip()
+        text = (title or "").strip().lower()
         if not text:
             return "General"
 
+        # Try Hugging Face API first
         try:
             payload = {
                 "inputs": text,
@@ -48,9 +49,29 @@ class ArticleModel:
             data = r.json()
             top_label = data["labels"][0]
             top_score = float(data["scores"][0])
-            return top_label if top_score >= 0.45 else "General"
-        except Exception:
-            return "General"
+            if top_score >= 0.35:  # Lowered threshold from 0.45 to 0.35
+                return top_label
+        except Exception as e:
+            print(f"⚠️ HF API failed: {e}, using fallback classification")
+
+        # Fallback: Keyword-based classification
+        keywords = {
+            "Sports": ["sports", "football", "basketball", "soccer", "game", "team", "player", "match", "league"],
+            "Politics": ["politics", "election", "congress", "senate", "president", "minister", "parliament", "vote", "political"],
+            "Fashion": ["fashion", "style", "clothing", "designer", "dress", "model", "wear", "trend", "collection"],
+            "Technology": ["tech", "computer", "software", "ai", "technology", "digital", "app", "cyber", "innovation"],
+            "Economy": ["economy", "business", "market", "stock", "finance", "trade", "company", "industry", "economic"],
+            "Defense": ["defense", "military", "war", "army", "navy", "security", "weapon", "soldier", "combat"],
+            "Weather": ["weather", "storm", "rain", "temperature", "climate", "wind", "forecast", "cold", "hot"],
+            "World": ["world", "international", "global", "country", "nation", "foreign", "worldwide", "region"]
+        }
+
+        for topic, words in keywords.items():
+            if any(word in text for word in words):
+                print(f"✅ Topic classified as '{topic}' using keywords")
+                return topic
+
+        return "General"
         
     @staticmethod
     def _make_guid(article: Dict[str, Any]) -> str:
