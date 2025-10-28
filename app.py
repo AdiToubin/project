@@ -11,16 +11,15 @@ from flask import Flask, render_template, request
 from app_mvc.controllers.news_controller import NewsController
 from app_mvc.controllers.api_controller import ApiController
 
-# optional integrated services
-try:
-    from x import image_service, image_agent, image_final_consumer, gradio_ui
-    import uvicorn
-    HAS_X_SERVICES = True
-except Exception as e:
-    import traceback
-    print("Failed to import optional 'x' services:")
-    traceback.print_exc()
-    HAS_X_SERVICES = False
+# optional integrated services - disabled to avoid importing x/ which requires extra deps
+HAS_X_SERVICES = False
+
+# stubs for static analysis and to keep code safe when agents are disabled
+uvicorn = None
+image_service = None
+image_agent = None
+image_final_consumer = None
+gradio_ui = None
 
 # Load environment variables
 load_dotenv()
@@ -28,7 +27,7 @@ load_dotenv()
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='mvc_view/templates')
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Initialize controllers
@@ -45,7 +44,7 @@ def index():
 @app.route('/news')
 def news():
     """Render all news articles from local JSON"""
-    json_path = Path(r"C:\Users\efrat\Desktop\project\news.json")
+    json_path = Path(r"C:\Users\user-bin\project\news.json")
     if not json_path.exists():
         return "לא נמצא קובץ news.json", 404
 
@@ -133,7 +132,7 @@ def _start_background_services():
         time.sleep(0.6)
 
 if __name__ == '__main__':
-    _start_background_services()
+    # Do not start optional background agents automatically to keep runtime stable
     fetch_and_ingest_once()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)

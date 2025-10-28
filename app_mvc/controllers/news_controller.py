@@ -71,7 +71,7 @@ class NewsController:
 
     def fetch_and_ingest_once(self):
         """Fetch news from file or API and ingest into database"""
-        news_path = Path("C:/Users/efrat/Desktop/project/news.json")
+        news_path = Path("C:\Users\user-bin\project\news.json")
 
         # Try local file first
         if news_path.exists():
