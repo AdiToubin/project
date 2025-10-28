@@ -30,7 +30,8 @@ class ArticleModel:
             "Content-Type": "application/json",
             "Prefer": "return=minimal"
         }
-        self.allowed_cols = {"guid", "subject", "content", "notes", "topic"}
+        # include image_url so inserts/upserts can store image links when available
+        self.allowed_cols = {"guid", "subject", "content", "notes", "topic", "image_url"}
 
     @staticmethod
     def guess_topic(title: str | None, source: str | None) -> str:
