@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>ידיעות חדשותיות</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f7f7f7; margin:0; padding:20px; }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { text-align:center; margin-bottom: 24px; }
+    .card { background:#fff; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); display:flex; gap:16px; }
+    .thumb { width:180px; min-width:180px; height:110px; background:#eee; border-radius:8px; object-fit:cover; }
+    .meta { color:#666; font-size:14px; margin-bottom:6px; }
+    .title { margin:0 0 8px; font-size:18px; }
+    .desc { margin:0; color:#444; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .btn { background:#007bff; color:#fff; padding:10px 16px; border:none; border-radius:8px; text-decoration:none; }
+    .btn:hover { background:#0056b3; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <h1>הידיעות החדשותיות החדשות</h1>
+      <a class="btn" href="/">חזרה לדף הראשי</a>
+    </div>
+
+    {% if articles and articles|length > 0 %}
+      {% for a in articles %}
+        <div class="card">
+          {% if a.urlToImage %}
+            <img class="thumb" src="{{ a.urlToImage }}" alt="">
+          {% else %}
+            <div class="thumb"></div>
+          {% endif %}
+          <div>
+            <p class="meta">
+              {{ (a.source.name if a.source and a.source.name else 'מקור לא ידוע') ~ ' · ' ~ (a.publishedAt or '') }}
+            </p>
+            <h2 class="title">
+              <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a>
+            </h2>
+            <p class="desc">{{ a.description or '' }}</p>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>אין ידיעות להצגה כרגע.</p>
+    {% endif %}
+  </div>
+</body>
+</html>

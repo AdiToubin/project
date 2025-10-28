@@ -2,12 +2,14 @@
 Flask Application Server - MVC Architecture
 """
 import os
+import json
+import threading
+import time
+from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, render_template, request
 from app_mvc.controllers.news_controller import NewsController
 from app_mvc.controllers.api_controller import ApiController
-import threading
-import time
 
 # optional integrated services
 try:
@@ -15,7 +17,6 @@ try:
     import uvicorn
     HAS_X_SERVICES = True
 except Exception as e:
-    # Print traceback so failures during import are visible in logs
     import traceback
     print("Failed to import optional 'x' services:")
     traceback.print_exc()
@@ -24,7 +25,6 @@ except Exception as e:
 # Load environment variables
 load_dotenv()
 
-# Disable SSL warnings for local development
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -41,6 +41,21 @@ api_controller = ApiController()
 def index():
     """Render main page"""
     return render_template('index.html')
+
+@app.route('/news')
+def news():
+    """Render all news articles from local JSON"""
+    json_path = Path(r"C:\Users\efrat\Desktop\project\news.json")
+    if not json_path.exists():
+        return "לא נמצא קובץ news.json", 404
+
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        articles = data.get("data", {}).get("articles", [])
+        return render_template('news.html', articles=articles)
+    except Exception as e:
+        return f"שגיאה בטעינת החדשות: {e}", 500
 
 @app.route('/api/process', methods=['POST'])
 def process():
@@ -71,13 +86,8 @@ def fetch_and_ingest_once():
     res = news_controller.fetch_and_ingest_once()
     print(f"[startup] ingest result: {res}")
 
-
 def _start_background_services():
-    """Start external image services and Gradio UI in background threads.
-
-    This is convenient for local development. Set environment variable
-    NO_AGENTS=1 to skip starting the extra services.
-    """
+    """Start optional image services and Gradio UI"""
     if os.environ.get("NO_AGENTS") == "1":
         print("Skipping background agents (NO_AGENTS=1)")
         return
@@ -86,7 +96,6 @@ def _start_background_services():
         print("x/services not available; skipping agents")
         return
 
-    # image microservice (FastAPI / uvicorn)
     def _run_image_service():
         try:
             print("Starting image_service (uvicorn) on 127.0.0.1:8004")
@@ -94,44 +103,37 @@ def _start_background_services():
         except Exception as e:
             print(f"image_service error: {e}")
 
-    # agent worker
     def _run_image_agent():
         try:
             image_agent.run()
         except Exception as e:
             print(f"image_agent error: {e}")
 
-    # final consumer
     def _run_final_consumer():
         try:
             image_final_consumer.run()
         except Exception as e:
             print(f"image_final_consumer error: {e}")
 
-    # gradio UI
     def _run_gradio():
         try:
             gradio_ui.run_gradio()
         except Exception as e:
             print(f"gradio_ui error: {e}")
 
-    threads = []
-    threads.append(threading.Thread(target=_run_image_service, daemon=True))
-    threads.append(threading.Thread(target=_run_image_agent, daemon=True))
-    threads.append(threading.Thread(target=_run_final_consumer, daemon=True))
-    threads.append(threading.Thread(target=_run_gradio, daemon=True))
+    threads = [
+        threading.Thread(target=_run_image_service, daemon=True),
+        threading.Thread(target=_run_image_agent, daemon=True),
+        threading.Thread(target=_run_final_consumer, daemon=True),
+        threading.Thread(target=_run_gradio, daemon=True)
+    ]
 
     for t in threads:
         t.start()
         time.sleep(0.6)
 
-
 if __name__ == '__main__':
-    # start background agents and UI (unless disabled)
     _start_background_services()
-
-    # initial fetch/ingest
     fetch_and_ingest_once()
-
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
