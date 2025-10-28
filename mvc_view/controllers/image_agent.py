@@ -7,7 +7,7 @@ to `news.final`. Kept under `x/` to avoid changing the MVC app code.
 import os
 import time
 import requests
-from x.kafka_utils import get_producer, get_consumer
+from mvc_view.models.kafka_utils import get_producer, get_consumer
 
 IMAGE_URL = os.environ.get("IMAGE_SERVICE_URL", "http://127.0.0.1:8004/image_candidates")
 HEADERS = {"Authorization": os.environ.get("IMAGE_SERVICE_TOKEN", "Bearer dev-token")}
