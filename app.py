@@ -159,6 +159,7 @@ def news():
     if not json_path.exists():
         return "לא נמצא קובץ news.json", 404
 
+
     try:
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
