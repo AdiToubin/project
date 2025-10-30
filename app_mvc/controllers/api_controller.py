@@ -95,66 +95,7 @@ class ApiController:
         except Exception as e:
             return jsonify({'status': 'error', 'message': str(e)}), 400
 
-    def calculate(self, data):
-        """
-        MATHEMATICAL CALCULATION ENDPOINT
-        ──────────────────────────────────
-        ביצוע פעולות חשבון: חיבור, חיסור, כפל, חילוק
-        Perform arithmetic calculations on provided numbers
-
-        ENDPOINT: POST /api/calculate
-        Content-Type: application/json
-
-        REQUEST BODY JSON FORMAT:
-        {
-            "num1": 10,          // First operand (float)
-            "num2": 5,           // Second operand (float)
-            "operation": "add"   // Operation type: "add"|"subtract"|"multiply"|"divide"
-        }
-
-        SUPPORTED OPERATIONS:
-        - "add": num1 + num2
-        - "subtract": num1 - num2
-        - "multiply": num1 * num2
-        - "divide": num1 / num2 (throws error if num2 == 0)
-
-        RETURNS: Tuple (JSON response, HTTP status)
-           Success: ({"result": value, ...}, 200)
-           Error: ({"status": "error", "message": error_details}, 400)
-
-        ERROR HANDLING:
-        - Missing parameters: uses defaults (num1=0, num2=0, operation="add")
-        - Invalid operation: caught and returned as HTTP 400
-        - Division by zero: caught and returned as HTTP 400
-        - Non-numeric values: caught during float() conversion
-
-        EXAMPLE REQUEST:
-        POST /api/calculate
-        {
-            "num1": 100,
-            "num2": 25,
-            "operation": "multiply"
-        }
-
-        EXAMPLE RESPONSE:
-        {
-            "status": "success",
-            "result": 2500,
-            "operation": "multiply",
-            "operands": [100, 25]
-        }
-
-        RESPONSE TIME: <10ms (local calculation)
-        """
-        try:
-            num1 = float(data.get('num1', 0))
-            num2 = float(data.get('num2', 0))
-            operation = data.get('operation', 'add')
-            result = self.logic.calculate(num1, num2, operation)
-            return jsonify(result), 200
-        except Exception as e:
-            return jsonify({'status': 'error', 'message': str(e)}), 400
-
+    
     def health(self):
         """
         HEALTH CHECK ENDPOINT
