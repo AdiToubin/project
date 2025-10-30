@@ -155,7 +155,7 @@ def news():
     4. Pass articles to Jinja2 template for HTML rendering
     5. Handle errors gracefully with Hebrew error messages
     """
-    json_path = Path(r"C:\project\news.json")
+    json_path = Path(r"C:\Users\efrat\Desktop\project\news.json")
     if not json_path.exists():
         return "לא נמצא קובץ news.json", 404
 

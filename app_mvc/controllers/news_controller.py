@@ -108,6 +108,7 @@ class NewsController:
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
+
     def ingest_payload(self, payload, table_name="articles"):
         """
         PROCESS & INSERT ARTICLES INTO DATABASE
@@ -256,7 +257,7 @@ class NewsController:
         - From cache: <100ms
         - From API: 2-5 seconds
         """
-        news_path = Path("C:\project\news.json")
+        news_path = Path(r"C:\Users\efrat\Desktop\project\news.json")
 
         # Try local file first (fastest path)
         if news_path.exists():
