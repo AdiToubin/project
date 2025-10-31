@@ -18,7 +18,7 @@ CANDIDATE_LABELS = ["Sports", "Economy", "Defense", "Weather", "Technology", "Po
 load_dotenv()
 
 class ArticleModel:
-    """Model for managing article data in Supabase"""
+    #מכינה את החיבור לסופבאייס
 
     def __init__(self):
         self.supabase_url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
@@ -33,6 +33,8 @@ class ArticleModel:
         # include image_url so inserts/upserts can store image links when available
         self.allowed_cols = {"guid", "subject", "content", "notes", "topic", "image_url"}
 
+
+    # ניחוש נושא הידיעה, קודם היא משתמשת בהאגינג פייס כדי לסווג אוטומטית, ואם זה נכשל היא משתמשת במילות מפתח
     @staticmethod
     def guess_topic(title: str | None, source: str | None) -> str:
         text = (title or "").strip().lower()
@@ -74,6 +76,7 @@ class ArticleModel:
 
         return "General"
         
+    #יוצרת מזהה ייחודי לכל ידיעה
     @staticmethod
     def _make_guid(article: Dict[str, Any]) -> str:
         """Generate deterministic GUID for article"""
@@ -88,6 +91,7 @@ class ArticleModel:
             pass
         return str(uuid.uuid4())
 
+    # מקבלת מאמר גולמי ומכינה אותו לפורמט שמתאים למסד הנתונים
     def transform_article(self, article: Dict[str, Any]) -> Dict[str, Any]:
         """Transform raw article data into database format"""
         src = article.get("source") or {}
@@ -117,6 +121,7 @@ class ArticleModel:
         }
         return {k: v for k, v in row.items() if k in self.allowed_cols and v is not None}
 
+    #  מכניסה את הידיעות למסד הנתונים בחתיכות כדי לא להעמיס על השרת
     def batch_insert(self, rows: List[Dict[str, Any]], table_name: str = "articles", chunk_size: int = 500):
         """Insert articles into database in batches"""
         if not rows:
@@ -127,6 +132,7 @@ class ArticleModel:
             r = requests.post(url, headers=self.headers, json=chunk, timeout=30, verify=False)
             r.raise_for_status()
 
+    #  מקבלת את הפיילוד ומחלצת ממנו את הידיעות
     def take_from_payload(self, payload: Dict[str, Any] | List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Extract and transform articles from various payload formats"""
         if isinstance(payload, list):

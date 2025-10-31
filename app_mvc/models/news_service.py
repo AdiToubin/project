@@ -16,15 +16,8 @@ class NewsFetcher:
         self.api_key = os.getenv("NEWSAPI_KEY") or "ec69e2af6cef4574a7d34d50ca107034"
 
     def fetch_top_headlines(self, country='us'):
-        """
-        Fetch top headlines from NewsAPI
-
-        Args:
-            country: Country code (default: 'us')
-
-        Returns:
-            dict: Response containing status, article count, and data
-        """
+        #אחראית להביא את החדשות, ולחת בקשת גט לניוז-אייפיאיי
+        
         try:
             params = {
                 'country': country,
